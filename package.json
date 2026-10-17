@@ -20,8 +20,8 @@
     "typescript": "~6.0.3"
   },
   "scripts": {
-    "start": "expo start",
-    "android": "expo run:android"
+    "dev": "expo start",
+    "build": "./apk.sh"
   },
   "private": true
 }

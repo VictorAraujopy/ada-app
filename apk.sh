@@ -1,5 +1,5 @@
 #!/bin/zsh
-# Gera o APK de release (o app de verdade, com o código dentro) em ada.apk, na raiz do repo.
+# npm run build: gera o APK de release (o app de verdade, com o código dentro) em ada.apk, na raiz do repo.
 # Instalar no celular pelo cabo, com a depuração USB ligada:  adb install -r ada.apk
 set -e
 export JAVA_HOME="$(brew --prefix openjdk@17)/libexec/openjdk.jdk/Contents/Home"
