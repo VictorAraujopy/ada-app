@@ -1,15 +1,29 @@
 # ada-app
 
-O app de celular da ADA, em TypeScript. Conversa com a API (repo `ada-api`) pela tailnet: o celular precisa
-estar no Tailscale.
+O app de celular da ADA, em TypeScript: Expo (SDK 58) + Expo Router, só Android. Conversa com a API (repo
+`ada-api`) pela tailnet: o celular precisa estar no Tailscale.
 
-O código do app mora em `src/app/`: cada arquivo ali é uma tela. A pasta `android/` é gerada pelo build,
-não se edita na mão.
+## O código
+
+Cada arquivo em `src/app/` é uma tela (Expo Router). A pasta `android/` é gerada pelo build, não se edita na mão.
+
+| Arquivo | O quê |
+|---|---|
+| `src/app/_layout.tsx` | carrega as fontes e monta a pilha de telas; a splash fica na tela até as fontes carregarem |
+| `src/app/index.tsx` | a lista de conversas por dia, com a ficha da ADA e a prévia da última resposta (segurar uma conversa apaga; sem conexão, o motivo e o tentar de novo) |
+| `src/app/conversa/[id].tsx` | o chat: a resposta chega ao vivo, com o raciocínio e as tools; `nova` nasce na primeira mensagem; voltou com a ADA ainda respondendo (`gerando`), pergunta de 2 em 2s até a resposta entrar |
+| `src/app/terminal.tsx` | o terminal do Mac: digital (sem cair pro PIN) + senha, criada aqui na primeira vez; trava com 5 min parado ou com o app no fundo |
+| `src/ada.ts` | tudo que fala com a API (o endereço do `.env.local`, os pedidos, a leitura do stream) |
+| `src/componentes.tsx` | a marca (`MarcaDaAda`), o eletro, o estado da ADA e o botão de ícone |
+| `src/markdown.tsx` | o markdown das respostas (bloco de código com copiar, título, lista, negrito, itálico e `código`) |
+| `src/tema.ts` | as cores e as fontes |
+| `app.json` | nome, package (`dev.ada.app`), ícone, splash escura e o http liberado (`usesCleartextTraffic`, a API é http pela tailnet) |
+| `assets/marca.svg` | a marca (o A com a borboleta): fonte do componente `MarcaDaAda` e dos ícones e da splash (`assets/*.png`) |
 
 Tem dois jeitos de rodar o app no celular:
 
-- **Desenvolvendo** (`npm run dev`): o celular puxa o código do Mac na hora. Mudou o código, a tela muda
-  sozinha. Só funciona com o Mac ligado servindo.
+- **Desenvolvendo** (`npm run dev`): o app é instalado em modo debug pelo cabo e puxa o código do Mac na
+  hora. Mudou o código, a tela muda sozinha. Só funciona com o Mac ligado servindo.
 - **O app de verdade** (`npm run build`): o código vai dentro de um APK que fica instalado no celular, com
   ícone, e funciona sozinho, até no 4G.
 
@@ -19,18 +33,15 @@ Tem dois jeitos de rodar o app no celular:
 npm run dev
 ```
 
-Sobe o servidor de desenvolvimento do Expo no Mac e mostra um QR no terminal. O Expo Go (app da Play Store)
-lê o QR, baixa o código do Mac e roda. Cada vez que um arquivo é salvo, o Mac manda a versão nova e a tela
-atualiza.
+Com o celular no cabo e a depuração USB ligada (passo 3 de "Gerar o APK"), roda o `dev.sh`, que faz três coisas:
+1. `npx expo prebuild`: atualiza a pasta `android/` com o que mudou no `app.json` e nas libs.
+2. `npx expo run:android`: compila o app em modo debug (só pro processador do celular conectado) e instala
+   pelo cabo. É o próprio app, não o Expo Go: as permissões, a digital e o http liberado são os de verdade.
+3. No fim, o próprio `run:android` liga o Metro, o servidor que entrega o JavaScript, e um túnel pelo cabo
+   (`adb reverse`) pro app achar o Metro sem depender de Wi-Fi.
 
-Se o celular não estiver no mesmo Wi-Fi do Mac:
-
-```bash
-REACT_NATIVE_PACKAGER_HOSTNAME=$(tailscale ip -4) npm run dev
-```
-
-O QR passa a apontar pro IP do Mac na tailnet em vez do IP do Wi-Fi, então o celular acha o Mac pelo
-Tailscale de qualquer rede.
+Cada vez que um arquivo é salvo, a tela atualiza na hora. A compilação nativa só se repete quando muda algo
+nativo (lib nova, `app.json`); a primeira demora uns minutos.
 
 ## Gerar o APK e instalar no celular
 
@@ -88,7 +99,8 @@ Roda o `apk.sh`, que faz três coisas:
 1. `npx expo prebuild`: gera o projeto Android nativo (a pasta `android/`) a partir do `app.json`, com o nome,
    o ícone, o package e o http liberado.
 2. `./gradlew assembleRelease`: o Gradle compila a parte nativa, empacota o código TypeScript (já convertido
-   pra JS) dentro do app e gera o APK.
+   pra JS) dentro do app e gera o APK. Só pra arm64 (`-PreactNativeArchitectures=arm64-v8a`), o processador de
+   todo celular Android atual: as 4 arquiteturas deixariam o build 3-4x mais lento.
 3. Copia o resultado pra `ada.apk`, na raiz do repo.
 
 O primeiro build demora, porque baixa o Gradle e o NDK. Os próximos levam poucos minutos.
@@ -117,11 +129,21 @@ Lista os celulares que o Mac está enxergando. O teu tem que aparecer como `devi
 ```
 
 Instala o APK no celular. O `-r` serve pra atualizar: se o app já estiver instalado, troca pela versão nova
-e mantém os dados dele (o endereço da ADA salvo, por exemplo).
+sem desinstalar.
 
 O `adb` vai com o caminho inteiro porque o `platform-tools` não está no PATH.
 
 ## Usar
+
+O endereço da ADA fica no `.env.local`, na raiz do repo (fora do git), e entra no app na hora de compilar:
+
+```bash
+EXPO_PUBLIC_ADA_ENDERECO=http://<IP do Mac na tailnet>:8000
+```
+
+O app nunca mostra nem pede o IP: ao abrir ele já testa a conexão, e sem ela (Tailscale desligado, API parada,
+endereço errado) a lista mostra o motivo e um botão de tentar de novo. Trocar o endereço = mudar o
+`.env.local` e compilar de novo.
 
 O app só conversa: quem pensa é a ADA, no Mac. Ela tem que estar rodando e escutando na tailnet:
 
@@ -133,3 +155,5 @@ cd ../ada-api && ADA_HOST=$(tailscale ip -4) caffeinate -i ../core/.venv/bin/pyt
   chegam nela (nunca `0.0.0.0`, que abriria pra rede toda).
 - `caffeinate -i`: impede o Mac de dormir enquanto a API roda.
 - `../core/.venv/bin/python main.py`: roda a API com o Python do core, que é onde estão as bibliotecas do modelo.
+
+O botão do terminal só aparece na lista com `ADA_TERMINAL=1` na API e pro `victor` (ver o README do `ada-api`).

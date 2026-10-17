@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200">
+  <!-- A marca da ADA: o A com a borboleta do vestido do RE4 no lugar da barra.
+       É a fonte dos ícones (assets/*.png) e do componente MarcaDaAda (src/componentes.tsx). -->
+  <defs>
+    <!-- a borboleta abre um vão nas pernas do A. As máscaras cobrem o desenho inteiro (userSpaceOnUse):
+         a área padrão é a da linha do A e cortaria a ponta afiada dele -->
+    <mask id="vao-da-borboleta" maskUnits="userSpaceOnUse" x="0" y="0" width="200" height="200">
+      <rect width="200" height="200" fill="white"/>
+      <g fill="black" stroke="black" stroke-width="8" stroke-linejoin="round">
+        <path d="M100 124 C88 96 58 98 68 120 C73 132 92 131 100 124 Z"/>
+        <path d="M100 124 C112 96 142 98 132 120 C127 132 108 131 100 124 Z"/>
+        <path d="M100 126 C90 130 72 144 81 153 C89 160 98 143 100 126 Z"/>
+        <path d="M100 126 C110 130 128 144 119 153 C111 160 102 143 100 126 Z"/>
+      </g>
+    </mask>
+    <!-- e o corpo dela abre um vão entre as asas -->
+    <mask id="corpo-da-borboleta" maskUnits="userSpaceOnUse" x="0" y="0" width="200" height="200">
+      <rect width="200" height="200" fill="white"/>
+      <path d="M100 110 V146" stroke="black" stroke-width="4" stroke-linecap="round"/>
+    </mask>
+  </defs>
+  <path d="M52 170 L100 36 L148 170" fill="none" stroke="#F2EFEA" stroke-width="20" stroke-linejoin="miter"
+        mask="url(#vao-da-borboleta)"/>
+  <g fill="#D7192A" mask="url(#corpo-da-borboleta)">
+    <path d="M100 124 C88 96 58 98 68 120 C73 132 92 131 100 124 Z"/>
+    <path d="M100 124 C112 96 142 98 132 120 C127 132 108 131 100 124 Z"/>
+    <path d="M100 126 C90 130 72 144 81 153 C89 160 98 143 100 126 Z"/>
+    <path d="M100 126 C110 130 128 144 119 153 C111 160 102 143 100 126 Z"/>
+  </g>
+</svg>
