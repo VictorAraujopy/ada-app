@@ -2,13 +2,13 @@
 // "nova" é a conversa que ainda não existe: ela nasce na primeira mensagem (o título é a própria mensagem).
 import { Feather } from '@expo/vector-icons';
 import { router, useLocalSearchParams } from 'expo-router';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { type ComponentRef, useCallback, useEffect, useRef, useState } from 'react';
 import {
-  FlatList,
   KeyboardAvoidingView,
   type NativeScrollEvent,
   type NativeSyntheticEvent,
   Pressable,
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -35,7 +35,7 @@ export default function ConversaTela() {
   const [gerando, setGerando] = useState(false); // a ADA ainda responde no servidor (o app caiu e voltou)
   const [texto, setTexto] = useState('');
   const [erro, setErro] = useState('');
-  const lista = useRef<FlatList<Mensagem>>(null);
+  const lista = useRef<ComponentRef<typeof ScrollView>>(null);
   const pertoDoFim = useRef(true);
 
   const recarregar = useCallback(async (conversa: string) => {
@@ -105,6 +105,13 @@ export default function ConversaTela() {
     }
   }
 
+  // só desce sozinho se quem lê já estava no fim (quem subiu pra reler não é puxado de volta);
+  // no quadro seguinte: na hora do evento o Android ainda não aplicou a altura nova e rolaria só até o fim antigo
+  function descerSeEstavaNoFim() {
+    if (!pertoDoFim.current) return;
+    requestAnimationFrame(() => lista.current?.scrollToEnd({ animated: false }));
+  }
+
   function aoRolar(evento: NativeSyntheticEvent<NativeScrollEvent>) {
     const { contentOffset, contentSize, layoutMeasurement } = evento.nativeEvent;
     pertoDoFim.current = contentSize.height - contentOffset.y - layoutMeasurement.height < 80;
@@ -121,44 +128,44 @@ export default function ConversaTela() {
         <BotaoIcone icone="edit" rotulo="Nova conversa" aoTocar={() => router.replace('/conversa/nova')} />
       </View>
 
-      <FlatList
+      {/* ScrollView e não FlatList: uma conversa tem poucas dezenas de mensagens, e a virtualização da
+          FlatList deixava a última resposta em branco quando ela trocava a versão ao vivo pela do banco */}
+      <ScrollView
         ref={lista}
-        data={mensagens}
-        keyExtractor={(mensagem, i) => `${mensagem.n}-${i}`}
         contentContainerStyle={estilos.mensagens}
-        onScroll={aoRolar}
-        scrollEventThrottle={100}
-        // só desce sozinho se quem lê já estava no fim (quem subiu pra reler não é puxado de volta)
-        onContentSizeChange={() => {
-          if (pertoDoFim.current) lista.current?.scrollToEnd({ animated: false });
-        }}
-        renderItem={({ item: mensagem }) =>
+        // só o dedo decide se quem lê saiu do fim: a rolagem do próprio app e o conteúdo crescendo não contam
+        onScrollEndDrag={aoRolar}
+        onMomentumScrollEnd={aoRolar}
+        // desce quando o conteúdo cresce e quando a própria lista muda de altura (abriu agora, teclado)
+        onContentSizeChange={descerSeEstavaNoFim}
+        onLayout={descerSeEstavaNoFim}
+      >
+        {mensagens.map((mensagem, i) =>
           mensagem.role === 'user' ? (
-            <Balao texto={mensagem.content} />
+            <Balao key={`${mensagem.n}-${i}`} texto={mensagem.content} />
           ) : (
             <RespostaDaAda
+              key={`${mensagem.n}-${i}`}
               texto={mensagem.content}
               think={mensagem.meta?.think ?? ''}
               tools={mensagem.meta?.tools ?? []}
               pensouS={mensagem.meta?.pensou_s ?? null}
               pensando={false}
             />
-          )
-        }
-        ListFooterComponent={
-          aoVivo ? (
-            <RespostaDaAda
-              texto={aoVivo.resp}
-              think={aoVivo.think}
-              tools={aoVivo.tools}
-              pensouS={null}
-              pensando={!aoVivo.resp}
-            />
-          ) : gerando ? (
-            <Text style={estilos.aviso}>A ADA ainda tá respondendo…</Text>
-          ) : undefined
-        }
-      />
+          ),
+        )}
+        {aoVivo ? (
+          <RespostaDaAda
+            texto={aoVivo.resp}
+            think={aoVivo.think}
+            tools={aoVivo.tools}
+            pensouS={null}
+            pensando={!aoVivo.resp}
+          />
+        ) : gerando ? (
+          <Text style={estilos.aviso}>A ADA ainda tá respondendo…</Text>
+        ) : null}
+      </ScrollView>
 
       {erro ? <Text style={estilos.erro}>{erro}</Text> : null}
 
