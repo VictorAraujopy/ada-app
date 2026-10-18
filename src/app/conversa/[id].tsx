@@ -17,11 +17,13 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { abrirConversa, conversar, criarConversa, ErroDaAda, type Mensagem, type Tool } from '@/ada';
-import { BotaoIcone, EstadoDaAda, useInfo } from '@/componentes';
+import { BotaoIcone, MarcaDaAda, useInfo } from '@/componentes';
 import { Markdown } from '@/markdown';
+import { ALTURA_DO_SINAL, SinalDaAda } from '@/sinal';
 import { cor, fonte } from '@/tema';
 
 const MAX_TEXTO = 20_000; // o mesmo teto da API (api/limite.py)
+const LARGURA_DOS_BOTOES = 28; // a caixa estreita do terminal da tela inicial
 
 type AoVivo = { think: string; tools: Tool[]; resp: string };
 
@@ -120,12 +122,24 @@ export default function ConversaTela() {
   return (
     <KeyboardAvoidingView behavior="padding" style={[estilos.tela, { paddingTop: margens.top }]}>
       <View style={estilos.cabecalho}>
-        <BotaoIcone icone="chevron-left" rotulo="Conversas" aoTocar={() => router.back()} />
-        <View style={estilos.centroDoCabecalho}>
-          <Text style={estilos.marca}>ADA</Text>
-          <EstadoDaAda estado={estado} />
+        <BotaoIcone
+          icone="chevron-left"
+          rotulo="Conversas"
+          moldura
+          largura={LARGURA_DOS_BOTOES}
+          aoTocar={() => router.back()}
+        />
+        <View style={estilos.logo}>
+          <MarcaDaAda tamanho={36} apagada={estado === 'fora do ar'} />
         </View>
-        <BotaoIcone icone="edit" rotulo="Nova conversa" aoTocar={() => router.replace('/conversa/nova')} />
+        <SinalDaAda estado={estado} />
+        <BotaoIcone
+          icone="edit"
+          rotulo="Nova conversa"
+          moldura
+          largura={LARGURA_DOS_BOTOES}
+          aoTocar={() => router.replace('/conversa/nova')}
+        />
       </View>
 
       {/* ScrollView e não FlatList: uma conversa tem poucas dezenas de mensagens, e a virtualização da
@@ -257,17 +271,27 @@ function RespostaDaAda({
 
 const estilos = StyleSheet.create({
   tela: { flex: 1, backgroundColor: cor.fundo },
+  // o mesmo topo da tela inicial (14 em cima, margem 20): o sinal não pula de lugar ao abrir a conversa
   cabecalho: {
-    height: 60,
-    paddingHorizontal: 8,
+    paddingTop: 14,
+    paddingBottom: 12,
+    paddingHorizontal: 20,
+    gap: 12,
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
     borderBottomWidth: 1,
     borderBottomColor: cor.linha,
   },
-  centroDoCabecalho: { alignItems: 'center', gap: 3 },
-  marca: { fontFamily: fonte.marca, fontSize: 21, letterSpacing: 4.2, color: cor.texto },
+  logo: {
+    width: ALTURA_DO_SINAL,
+    height: ALTURA_DO_SINAL,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: cor.linha,
+    backgroundColor: cor.superficie,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   mensagens: { padding: 20, gap: 22 },
   balao: {
     alignSelf: 'flex-end',
@@ -307,7 +331,7 @@ const estilos = StyleSheet.create({
   toolTexto: { flexShrink: 1, fontFamily: fonte.texto, fontSize: 13, color: cor.textoFraco },
   aviso: { fontFamily: fonte.italico, fontSize: 14, color: cor.apagado },
   erro: { marginHorizontal: 20, marginBottom: 6, fontFamily: fonte.texto, fontSize: 14, color: cor.vermelhoTexto },
-  rodape: { paddingHorizontal: 12, paddingTop: 8 },
+  rodape: { paddingHorizontal: 20, paddingTop: 8 },
   campo: {
     minHeight: 52,
     paddingLeft: 18,

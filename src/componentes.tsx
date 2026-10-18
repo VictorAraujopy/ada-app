@@ -1,9 +1,9 @@
-// O que mais de uma tela usa: a marca, o eletro (o estado da ADA, que se atualiza sozinho) e o botão de ícone.
+// O que mais de uma tela usa: a marca, o estado da ADA (que se atualiza sozinho) e o botão de ícone.
 import { Feather } from '@expo/vector-icons';
 import { useFocusEffect } from 'expo-router';
 import { type ComponentProps, useCallback, useState } from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
-import Svg, { Defs, G, Mask, Path, Polyline, Rect } from 'react-native-svg';
+import { Pressable, StyleSheet } from 'react-native';
+import Svg, { Defs, G, Mask, Path, Rect } from 'react-native-svg';
 
 import { comPrazo, estadoDaAda, info, type Info } from '@/ada';
 import { cor } from '@/tema';
@@ -58,20 +58,6 @@ export function MarcaDaAda({ tamanho, apagada = false }: { tamanho: number; apag
   );
 }
 
-export function Eletro({ corDoSinal, largura = 34 }: { corDoSinal: string; largura?: number }) {
-  return (
-    <Svg width={largura} height={largura / 2.6} viewBox="0 0 26 10">
-      <Polyline
-        points="0,5 7,5 9.5,1 12,9 14.5,5 26,5"
-        fill="none"
-        stroke={corDoSinal}
-        strokeWidth={1.5}
-        strokeLinejoin="round"
-      />
-    </Svg>
-  );
-}
-
 // pergunta o /info a cada 5s, só enquanto a tela está na frente (5s sem resposta = fora do ar)
 export function useInfo() {
   const [atual, setAtual] = useState<Info | null>(null);
@@ -102,32 +88,20 @@ export function useInfo() {
   return { info: atual, estado: estadoDaAda(atual, foraDoAr) };
 }
 
-// a cor diz o estado, como na tela de status do RE: verde no ar, âmbar carregando ou com fila, vermelho fora do ar
-function corDoEstado(estado: string) {
-  if (estado === 'pronta') return cor.vivo;
-  if (estado === 'fora do ar') return cor.vermelho;
-  if (estado === '…') return cor.apagado;
-  return cor.atencao;
-}
-
-export function EstadoDaAda({ estado, largura }: { estado: string; largura?: number }) {
-  return (
-    <View accessible accessibilityLabel={`ADA ${estado}`}>
-      <Eletro corDoSinal={corDoEstado(estado)} largura={largura} />
-    </View>
-  );
-}
-
 export function BotaoIcone({
   icone,
   rotulo,
   aoTocar,
   destaque = false,
+  moldura = false,
+  largura,
 }: {
   icone: NomeDoIcone;
   rotulo: string;
   aoTocar: () => void;
   destaque?: boolean;
+  moldura?: boolean; // numa caixa, ao lado do sinal da tela inicial
+  largura?: number; // sem ela, 44 (a altura fica sempre 44)
 }) {
   return (
     <Pressable
@@ -135,7 +109,13 @@ export function BotaoIcone({
       accessibilityLabel={rotulo}
       onPress={aoTocar}
       hitSlop={6}
-      style={({ pressed }) => [estilos.botaoIcone, destaque && estilos.botaoDestaque, pressed && estilos.apertado]}
+      style={({ pressed }) => [
+        estilos.botaoIcone,
+        destaque && estilos.botaoDestaque,
+        moldura && estilos.botaoMoldura,
+        largura !== undefined && { width: largura },
+        pressed && estilos.apertado,
+      ]}
     >
       <Feather name={icone} size={destaque ? 16 : 21} color={destaque ? cor.vermelhoTexto : cor.texto} />
     </Pressable>
@@ -145,5 +125,6 @@ export function BotaoIcone({
 const estilos = StyleSheet.create({
   botaoIcone: { width: 44, height: 44, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
   botaoDestaque: { borderWidth: 1, borderColor: cor.vermelho },
+  botaoMoldura: { borderWidth: 1, borderColor: cor.linha, backgroundColor: cor.superficie },
   apertado: { opacity: 0.6 },
 });

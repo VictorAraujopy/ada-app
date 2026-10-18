@@ -3,16 +3,17 @@
 export const cor = {
   fundo: '#0B0B0C',
   superficie: '#151517', // campo de texto, bloco de código, ficha
+  tela: '#050706', // o fundo do monitor do sinal, mais fundo que o fundo do app
   balao: '#1C1C1F', // a mensagem de quem escreve
   linha: '#26262A',
   texto: '#F2EFEA',
   textoFraco: '#C9C5BF',
   apagado: '#8E8A85', // horário, "pensou 3,8s", placeholder
   marcaApagada: '#56565C', // a borboleta quando a ADA está fora do ar
-  vermelho: '#D7192A', // botão, e o eletro com a ADA fora do ar (o DANGER do RE)
-  vivo: '#3DCB6C', // o eletro com a ADA no ar (o FINE do RE)
-  atencao: '#E8A33D', // o eletro com a ADA carregando ou com fila (o CAUTION do RE)
-  vermelhoTexto: '#F0464F', // vermelho que dá pra ler em letra pequena no preto
+  vermelho: '#D7192A', // botão e a borboleta da marca
+  vivo: '#3DCB6C', // o sinal com a ADA no ar (o FINE do RE)
+  atencao: '#E8A33D', // o sinal com a ADA carregando ou com fila (o CAUTION do RE)
+  vermelhoTexto: '#F0464F', // vermelho que dá pra ler em letra pequena no preto, e o sinal fora do ar (o DANGER do RE)
 };
 
 // os nomes são os que os pacotes @expo-google-fonts exportam (carregados no _layout)

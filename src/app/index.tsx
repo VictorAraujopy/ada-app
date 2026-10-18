@@ -1,4 +1,4 @@
-// A lista de conversas: a ficha da ADA no topo, as conversas por dia e o botão de nova.
+// A lista de conversas: o sinal da ADA no topo, as conversas por dia e o botão de nova.
 // Segurar uma conversa apaga (com confirmação). Sem conexão, mostra o erro com o tentar de novo.
 import { Feather } from '@expo/vector-icons';
 import { router, useFocusEffect } from 'expo-router';
@@ -7,10 +7,13 @@ import { Alert, Pressable, RefreshControl, SectionList, StyleSheet, Text, View }
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { apagarConversa, comPrazo, type Conversa, ErroDaAda, listarConversas } from '@/ada';
-import { BotaoIcone, EstadoDaAda, MarcaDaAda, useInfo } from '@/componentes';
+import { BotaoIcone, MarcaDaAda, useInfo } from '@/componentes';
+import { SinalDaAda } from '@/sinal';
 import { cor, fonte } from '@/tema';
 
 const UM_DIA = 24 * 60 * 60 * 1000;
+// a largura de "00:00" na lista (números de largura fixa); o terminal no topo tem a mesma, pra ficar em cima da hora
+const LARGURA_DA_HORA = 28;
 
 // Hoje / Ontem / Esta semana / Antes, pela última atividade da conversa
 function secaoDe(atualizada: number) {
@@ -46,6 +49,11 @@ function agruparPorDia(conversas: Conversa[]) {
     }
   }
   return secoes;
+}
+
+// a linha entre conversas do mesmo dia: a cor da borda do sinal, na largura da lista
+function Divisoria() {
+  return <View style={estilos.divisoria} />;
 }
 
 export default function Conversas() {
@@ -91,22 +99,16 @@ export default function Conversas() {
   return (
     <View style={[estilos.tela, { paddingTop: margens.top }]}>
       <View style={estilos.cabecalho}>
-        <Text style={estilos.titulo}>Conversas</Text>
-        <View style={estilos.acoes}>
-          {info?.terminal ? (
-            <BotaoIcone icone="terminal" rotulo="Terminal do Mac" aoTocar={() => router.push('/terminal')} />
-          ) : null}
-        </View>
-      </View>
-
-      <View style={estilos.ficha}>
-        <View style={estilos.foto}>
-          <MarcaDaAda tamanho={52} />
-        </View>
-        <View style={estilos.fichaTexto}>
-          <Text style={estilos.marca}>ADA</Text>
-          <EstadoDaAda estado={estado} largura={44} />
-        </View>
+        <SinalDaAda estado={estado} />
+        {info?.terminal ? (
+          <BotaoIcone
+            icone="terminal"
+            rotulo="Terminal do Mac"
+            moldura
+            largura={LARGURA_DA_HORA}
+            aoTocar={() => router.push('/terminal')}
+          />
+        ) : null}
       </View>
 
       {erro ? (
@@ -136,6 +138,7 @@ export default function Conversas() {
             />
           }
           renderSectionHeader={({ section }) => <Text style={estilos.secao}>{section.title}</Text>}
+          ItemSeparatorComponent={Divisoria}
           renderItem={({ item: conversa }) => (
             <Pressable
               accessibilityRole="button"
@@ -143,17 +146,17 @@ export default function Conversas() {
               onLongPress={() => confirmarApagar(conversa)}
               style={({ pressed }) => [estilos.item, pressed && estilos.itemApertado]}
             >
-              <View style={estilos.itemTexto}>
+              <View style={estilos.itemLinha}>
                 <Text style={estilos.itemTitulo} numberOfLines={1}>
                   {conversa.titulo}
                 </Text>
-                {conversa.previa ? (
-                  <Text style={estilos.itemPrevia} numberOfLines={1}>
-                    {conversa.previa}
-                  </Text>
-                ) : null}
+                <Text style={estilos.itemQuando}>{quando(conversa.atualizada)}</Text>
               </View>
-              <Text style={estilos.itemQuando}>{quando(conversa.atualizada)}</Text>
+              {conversa.previa ? (
+                <Text style={estilos.itemPrevia} numberOfLines={1}>
+                  {conversa.previa}
+                </Text>
+              ) : null}
             </Pressable>
           )}
           ListEmptyComponent={carregando ? undefined : <Text style={estilos.vazio}>Nenhuma conversa ainda.</Text>}
@@ -180,39 +183,12 @@ const estilos = StyleSheet.create({
   tela: { flex: 1, backgroundColor: cor.fundo },
   cabecalho: {
     paddingTop: 14,
-    paddingBottom: 10,
-    paddingLeft: 20,
-    paddingRight: 10,
+    paddingBottom: 12,
+    paddingHorizontal: 20,
+    gap: 12,
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
   },
-  titulo: { fontFamily: fonte.textoForte, fontSize: 26, color: cor.texto },
-  acoes: { flexDirection: 'row' },
-  ficha: {
-    marginHorizontal: 20,
-    marginBottom: 14,
-    padding: 12,
-    gap: 14,
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: cor.superficie,
-    borderWidth: 1,
-    borderColor: cor.linha,
-    borderRadius: 16,
-  },
-  foto: {
-    width: 60,
-    height: 60,
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: cor.linha,
-    backgroundColor: cor.fundo,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  fichaTexto: { gap: 6 },
-  marca: { fontFamily: fonte.marca, fontSize: 22, letterSpacing: 4.4, color: cor.texto },
   semConexao: {
     flex: 1,
     paddingHorizontal: 40,
@@ -231,9 +207,10 @@ const estilos = StyleSheet.create({
     justifyContent: 'center',
   },
   tentarTexto: { fontFamily: fonte.textoForte, fontSize: 16, color: '#FFFFFF' },
+  // 12 da lista + 8 do item = 20, a mesma margem do sinal
   lista: { paddingHorizontal: 12, paddingBottom: 12 },
   secao: {
-    paddingHorizontal: 10,
+    paddingHorizontal: 8,
     paddingTop: 12,
     paddingBottom: 6,
     fontFamily: fonte.textoMedio,
@@ -242,17 +219,24 @@ const estilos = StyleSheet.create({
   },
   item: {
     minHeight: 60,
-    paddingHorizontal: 10,
+    paddingHorizontal: 8,
     borderRadius: 12,
-    gap: 12,
-    flexDirection: 'row',
-    alignItems: 'center',
+    gap: 2,
+    justifyContent: 'center',
   },
   itemApertado: { backgroundColor: cor.balao },
-  itemTexto: { flex: 1, gap: 2 },
-  itemTitulo: { fontFamily: fonte.textoMedio, fontSize: 15.5, color: cor.texto },
+  itemLinha: { gap: 12, flexDirection: 'row', alignItems: 'baseline' },
+  itemTitulo: { flex: 1, fontFamily: fonte.textoMedio, fontSize: 15.5, color: cor.texto },
   itemPrevia: { fontFamily: fonte.texto, fontSize: 13, color: cor.apagado },
-  itemQuando: { fontFamily: fonte.texto, fontSize: 12, color: cor.apagado },
+  itemQuando: {
+    minWidth: LARGURA_DA_HORA,
+    textAlign: 'right',
+    fontFamily: fonte.texto,
+    fontSize: 12,
+    fontVariant: ['tabular-nums'],
+    color: cor.apagado,
+  },
+  divisoria: { height: 1, marginHorizontal: 8, backgroundColor: cor.linha },
   vazio: { padding: 20, textAlign: 'center', fontFamily: fonte.texto, fontSize: 14, color: cor.apagado },
   rodape: { paddingHorizontal: 20, paddingTop: 12 },
   nova: {
