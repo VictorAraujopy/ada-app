@@ -303,6 +303,7 @@ export default function Terminal() {
       {recentes.length > 0 ? (
         <ScrollView
           horizontal
+          keyboardShouldPersistTaps="handled"
           showsHorizontalScrollIndicator={false}
           style={estilos.faixaDosRecentes}
           contentContainerStyle={estilos.recentes}
