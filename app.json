@@ -28,6 +28,12 @@
       ],
       "expo-font",
       [
+        "expo-image-picker",
+        {
+          "microphonePermission": false
+        }
+      ],
+      [
         "expo-splash-screen",
         {
           "backgroundColor": "#0B0B0C",

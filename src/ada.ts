@@ -9,7 +9,8 @@ export type Info = { pronta: boolean; fila: number; usuario: string; terminal: b
 export type Conversa = { id: string; titulo: string; atualizada: number; n: number; previa: string | null };
 export type Tool = { nome: string; res: string };
 export type Meta = { pensou_s: number; respondeu_s: number; tools: Tool[]; think: string };
-export type Mensagem = { n: number; role: 'user' | 'assistant'; content: string; meta: Meta | null };
+// foto: o nome da foto na API (mensagem do usuário que mandou uma) ou null
+export type Mensagem = { n: number; role: 'user' | 'assistant'; content: string; meta: Meta | null; foto: string | null };
 export type ConversaAberta = { id: string; titulo: string; mensagens: Mensagem[]; gerando: boolean };
 
 export type EventoChat =
@@ -115,11 +116,21 @@ export const abrirConversa = (id: string) => pedirJson<ConversaAberta>(`/convers
 
 export const apagarConversa = (id: string) => pedirJson(`/conversas/${id}`, { metodo: 'DELETE' });
 
-// a resposta quem grava é a API: se a conexão cair no meio, ela termina e grava igual
-export async function conversar(conversa: string, msg: string, aoEvento: (evento: EventoChat) => void) {
-  const resposta = await abrir('/chat', { metodo: 'POST', corpo: { conversa, msg } });
+// a resposta quem grava é a API: se a conexão cair no meio, ela termina e grava igual;
+// foto: o JPEG em base64 que o foto.ts preparou, ou null
+export async function conversar(
+  conversa: string,
+  msg: string,
+  foto: string | null,
+  aoEvento: (evento: EventoChat) => void,
+) {
+  const corpo = foto ? { conversa, msg, foto } : { conversa, msg };
+  const resposta = await abrir('/chat', { metodo: 'POST', corpo });
   await lerEventos(resposta, aoEvento);
 }
+
+// a foto de uma mensagem, servida pela API (a imagem do app busca direto deste endereço)
+export const enderecoDaFoto = (conversa: string, nome: string) => `${ENDERECO}/conversas/${conversa}/fotos/${nome}`;
 
 // o que a ficha e o cabeçalho mostram: só o que muda e importa
 export function estadoDaAda(atual: Info | null, foraDoAr: boolean) {

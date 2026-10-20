@@ -1,9 +1,11 @@
-// Uma conversa: as mensagens do banco, a resposta da ADA chegando ao vivo e o campo de mandar.
+// Uma conversa: as mensagens do banco, a resposta da ADA chegando ao vivo e o campo de mandar (texto e foto).
 // "nova" é a conversa que ainda não existe: ela nasce na primeira mensagem (o título é a própria mensagem).
 import { Feather } from '@expo/vector-icons';
 import { router, useLocalSearchParams } from 'expo-router';
 import { type ComponentRef, useCallback, useEffect, useRef, useState } from 'react';
 import {
+  Alert,
+  Image,
   KeyboardAvoidingView,
   type NativeScrollEvent,
   type NativeSyntheticEvent,
@@ -16,8 +18,17 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { abrirConversa, conversar, criarConversa, ErroDaAda, type Mensagem, type Tool } from '@/ada';
+import {
+  abrirConversa,
+  conversar,
+  criarConversa,
+  enderecoDaFoto,
+  ErroDaAda,
+  type Mensagem,
+  type Tool,
+} from '@/ada';
 import { BotaoIcone, MarcaDaAda, useInfo } from '@/componentes';
+import { type FotoPronta, pegarFoto } from '@/foto';
 import { Markdown } from '@/markdown';
 import { ALTURA_DO_SINAL, SinalDaAda } from '@/sinal';
 import { cor, fonte } from '@/tema';
@@ -36,6 +47,7 @@ export default function ConversaTela() {
   const [aoVivo, setAoVivo] = useState<AoVivo | null>(null);
   const [gerando, setGerando] = useState(false); // a ADA ainda responde no servidor (o app caiu e voltou)
   const [texto, setTexto] = useState('');
+  const [foto, setFoto] = useState<FotoPronta | null>(null); // a foto escolhida, esperando o enviar
   const [erro, setErro] = useState('');
   const lista = useRef<ComponentRef<typeof ScrollView>>(null);
   const pertoDoFim = useRef(true);
@@ -64,24 +76,50 @@ export default function ConversaTela() {
 
   const ocupada = aoVivo !== null || gerando;
   const adaAtende = estado === 'pronta' || estado.endsWith('na frente');
-  const podeMandar = texto.trim().length > 0 && !ocupada && adaAtende;
+  const podeMandar = (texto.trim().length > 0 || foto !== null) && !ocupada && adaAtende;
+
+  function escolherFoto() {
+    Alert.alert('Mandar uma foto', undefined, [
+      { text: 'Cancelar', style: 'cancel' },
+      { text: 'Galeria', onPress: () => anexar('galeria') },
+      { text: 'Câmera', onPress: () => anexar('camera') },
+    ]);
+  }
+
+  async function anexar(origem: 'camera' | 'galeria') {
+    try {
+      const pronta = await pegarFoto(origem);
+      if (pronta) setFoto(pronta);
+    } catch (e) {
+      setErro(e instanceof Error ? e.message : 'não consegui pegar a foto');
+    }
+  }
+
+  // a mensagem que acabou de sair (n -1) mostra a foto pelo arquivo do celular; as do banco vêm da API
+  function fotoDa(mensagem: Mensagem) {
+    if (!mensagem.foto) return null;
+    return mensagem.n === -1 ? mensagem.foto : enderecoDaFoto(id, mensagem.foto);
+  }
 
   async function enviar() {
     const msg = texto.trim();
-    if (!msg || ocupada) return;
+    const fotoEnviada = foto;
+    if ((!msg && !fotoEnviada) || ocupada) return;
     setTexto('');
+    setFoto(null);
     setErro('');
     let conversa = id;
     try {
       if (conversa === 'nova') {
-        conversa = (await criarConversa(msg)).id;
+        conversa = (await criarConversa(msg || 'foto')).id;
         setId(conversa);
       }
       // aparece na hora; a versão do banco chega no recarregar do fim
-      setMensagens((atuais) => [...atuais, { n: -1, role: 'user', content: msg, meta: null }]);
+      const naHora: Mensagem = { n: -1, role: 'user', content: msg, meta: null, foto: fotoEnviada?.uri ?? null };
+      setMensagens((atuais) => [...atuais, naHora]);
       setAoVivo({ think: '', tools: [], resp: '' });
       pertoDoFim.current = true;
-      await conversar(conversa, msg, (evento) => {
+      await conversar(conversa, msg, fotoEnviada?.base64 ?? null, (evento) => {
         if (evento.t === 'think') {
           setAoVivo((atual) => atual && { ...atual, think: atual.think + evento.d });
         } else if (evento.t === 'resp') {
@@ -94,9 +132,10 @@ export default function ConversaTela() {
       });
     } catch (e) {
       if (e instanceof ErroDaAda) {
-        // a API recusou antes de gravar (ocupada, carregando, fora do ar): a mensagem volta pro campo
+        // a API recusou antes de gravar (ocupada, carregando, fora do ar, foto inválida): a mensagem volta pro campo
         setErro(e.message);
         setTexto(msg);
+        setFoto(fotoEnviada);
         setMensagens((atuais) => atuais.filter((m) => m.n !== -1));
       } else {
         setErro('a conexão caiu no meio; a ADA termina e grava a resposta');
@@ -156,7 +195,7 @@ export default function ConversaTela() {
       >
         {mensagens.map((mensagem, i) =>
           mensagem.role === 'user' ? (
-            <Balao key={`${mensagem.n}-${i}`} texto={mensagem.content} />
+            <Balao key={`${mensagem.n}-${i}`} texto={mensagem.content} foto={fotoDa(mensagem)} />
           ) : (
             <RespostaDaAda
               key={`${mensagem.n}-${i}`}
@@ -184,7 +223,31 @@ export default function ConversaTela() {
       {erro ? <Text style={estilos.erro}>{erro}</Text> : null}
 
       <View style={[estilos.rodape, { paddingBottom: margens.bottom + 12 }]}>
+        {foto ? (
+          <View style={estilos.anexo}>
+            <Image source={{ uri: foto.uri }} style={estilos.anexoFoto} accessibilityLabel="Foto escolhida" />
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Tirar a foto"
+              onPress={() => setFoto(null)}
+              hitSlop={8}
+              style={estilos.anexoTirar}
+            >
+              <Feather name="x" size={13} color={cor.texto} />
+            </Pressable>
+          </View>
+        ) : null}
         <View style={estilos.campo}>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Mandar foto"
+            onPress={escolherFoto}
+            disabled={ocupada}
+            hitSlop={6}
+            style={({ pressed }) => [estilos.botaoFoto, ocupada && estilos.desligado, pressed && estilos.apertado]}
+          >
+            <Feather name="image" size={20} color={cor.apagado} />
+          </Pressable>
           <TextInput
             accessibilityLabel="Mensagem"
             value={texto}
@@ -210,12 +273,15 @@ export default function ConversaTela() {
   );
 }
 
-function Balao({ texto }: { texto: string }) {
+function Balao({ texto, foto }: { texto: string; foto: string | null }) {
   return (
     <View style={estilos.balao}>
-      <Text selectable style={estilos.balaoTexto}>
-        {texto}
-      </Text>
+      {foto ? <Image source={{ uri: foto }} style={estilos.balaoFoto} accessibilityLabel="Foto mandada" /> : null}
+      {texto ? (
+        <Text selectable style={estilos.balaoTexto}>
+          {texto}
+        </Text>
+      ) : null}
     </View>
   );
 }
@@ -301,7 +367,9 @@ const estilos = StyleSheet.create({
     borderRadius: 18,
     borderBottomRightRadius: 6,
     backgroundColor: cor.balao,
+    gap: 10,
   },
+  balaoFoto: { width: 220, height: 220, borderRadius: 12, backgroundColor: cor.superficie },
   balaoTexto: { fontFamily: fonte.texto, fontSize: 16, lineHeight: 23, color: cor.texto },
   resposta: { gap: 10 },
   pensou: { alignSelf: 'flex-start', height: 30, gap: 7, flexDirection: 'row', alignItems: 'center' },
@@ -332,9 +400,24 @@ const estilos = StyleSheet.create({
   aviso: { fontFamily: fonte.italico, fontSize: 14, color: cor.apagado },
   erro: { marginHorizontal: 20, marginBottom: 6, fontFamily: fonte.texto, fontSize: 14, color: cor.vermelhoTexto },
   rodape: { paddingHorizontal: 20, paddingTop: 8 },
+  anexo: { alignSelf: 'flex-start', marginBottom: 10, marginLeft: 6 },
+  anexoFoto: { width: 64, height: 64, borderRadius: 10, borderWidth: 1, borderColor: cor.linha },
+  anexoTirar: {
+    position: 'absolute',
+    top: -7,
+    right: -7,
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    borderWidth: 1,
+    borderColor: cor.linha,
+    backgroundColor: cor.balao,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   campo: {
     minHeight: 52,
-    paddingLeft: 18,
+    paddingLeft: 6,
     paddingRight: 6,
     paddingVertical: 6,
     gap: 8,
@@ -354,6 +437,7 @@ const estilos = StyleSheet.create({
     fontSize: 16,
     color: cor.texto,
   },
+  botaoFoto: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center' },
   enviar: {
     width: 40,
     height: 40,

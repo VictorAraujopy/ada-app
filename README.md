@@ -11,13 +11,14 @@ Cada arquivo em `src/app/` é uma tela (Expo Router). A pasta `android/` é gera
 |---|---|
 | `src/app/_layout.tsx` | carrega as fontes e monta a pilha de telas; a splash fica na tela até as fontes carregarem |
 | `src/app/index.tsx` | a lista de conversas por dia, com a ficha da ADA e a prévia da última resposta (segurar uma conversa apaga; sem conexão, o motivo e o tentar de novo) |
-| `src/app/conversa/[id].tsx` | o chat: a resposta chega ao vivo, com o raciocínio e as tools; `nova` nasce na primeira mensagem; voltou com a ADA ainda respondendo (`gerando`), pergunta de 2 em 2s até a resposta entrar |
+| `src/app/conversa/[id].tsx` | o chat: a resposta chega ao vivo, com o raciocínio e as tools; o botão de imagem no campo manda uma foto (câmera ou galeria), com a miniatura antes de enviar e a foto no balão; `nova` nasce na primeira mensagem; voltou com a ADA ainda respondendo (`gerando`), pergunta de 2 em 2s até a resposta entrar |
 | `src/app/terminal.tsx` | o terminal do Mac: digital (sem cair pro PIN) + senha, criada aqui na primeira vez; trava com 5 min parado ou com o app no fundo |
-| `src/ada.ts` | tudo que fala com a API (o endereço do `.env.local`, os pedidos, a leitura do stream) |
+| `src/ada.ts` | tudo que fala com a API (o endereço do `.env.local`, os pedidos, a leitura do stream, o endereço das fotos) |
+| `src/foto.ts` | pegar a foto (câmera ou galeria) e preparar: no máximo 1024 px de lado, em pé, JPEG em base64 |
 | `src/componentes.tsx` | a marca (`MarcaDaAda`), o eletro, o estado da ADA e o botão de ícone |
 | `src/markdown.tsx` | o markdown das respostas (bloco de código com copiar, título, lista, negrito, itálico e `código`) |
 | `src/tema.ts` | as cores e as fontes |
-| `app.json` | nome, package (`dev.ada.app`), ícone, splash escura e o http liberado (`usesCleartextTraffic`, a API é http pela tailnet) |
+| `app.json` | nome, package (`dev.ada.app`), ícone, splash escura, o http liberado (`usesCleartextTraffic`, a API é http pela tailnet) e o seletor de foto sem permissão de microfone |
 | `assets/marca.svg` | a marca (o A com a borboleta): fonte do componente `MarcaDaAda` e dos ícones e da splash (`assets/*.png`) |
 
 Tem dois jeitos de rodar o app no celular:
@@ -97,7 +98,7 @@ npm run build
 
 Roda o `apk.sh`, que faz três coisas:
 1. `npx expo prebuild`: gera o projeto Android nativo (a pasta `android/`) a partir do `app.json`, com o nome,
-   o ícone, o package e o http liberado.
+   o ícone, o package, o http liberado e as permissões (câmera pra foto; microfone bloqueado, o app não usa).
 2. `./gradlew assembleRelease`: o Gradle compila a parte nativa, empacota o código TypeScript (já convertido
    pra JS) dentro do app e gera o APK. Só pra arm64 (`-PreactNativeArchitectures=arm64-v8a`), o processador de
    todo celular Android atual: as 4 arquiteturas deixariam o build 3-4x mais lento.
@@ -123,6 +124,12 @@ Com o cabo conectado:
 
 Lista os celulares que o Mac está enxergando. O teu tem que aparecer como `device`. Se aparecer
 `unauthorized`, o celular está perguntando se confia no Mac: aceita o aviso "Permitir depuração USB" na tela.
+Se o aviso não aparecer, o servidor do `adb` no Mac travou a autorização; reiniciar ele faz o celular perguntar
+de novo:
+
+```bash
+~/Library/Android/sdk/platform-tools/adb kill-server && ~/Library/Android/sdk/platform-tools/adb devices
+```
 
 ```bash
 ~/Library/Android/sdk/platform-tools/adb install -r ada.apk
