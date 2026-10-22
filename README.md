@@ -163,4 +163,4 @@ cd ../ada-api && ADA_HOST=$(tailscale ip -4) caffeinate -i ../core/.venv/bin/pyt
 - `caffeinate -i`: impede o Mac de dormir enquanto a API roda.
 - `../core/.venv/bin/python main.py`: roda a API com o Python do core, que é onde estão as bibliotecas do modelo.
 
-O botão do terminal só aparece na lista com `ADA_TERMINAL=1` na API e pro `victor` (ver o README do `ada-api`).
+O botão do terminal só aparece na lista com `ADA_TERMINAL=1` na API (ver o README do `ada-api`).

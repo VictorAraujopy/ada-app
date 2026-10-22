@@ -5,7 +5,7 @@ import { fetch } from 'expo/fetch';
 // e a tela nunca mostra nem pede IP
 const ENDERECO = process.env.EXPO_PUBLIC_ADA_ENDERECO;
 
-export type Info = { pronta: boolean; fila: number; usuario: string; terminal: boolean; fake: boolean };
+export type Info = { pronta: boolean; fila: number; terminal: boolean; fake: boolean };
 export type Conversa = { id: string; titulo: string; atualizada: number; n: number; previa: string | null };
 export type Tool = { nome: string; res: string };
 export type Meta = { pensou_s: number; respondeu_s: number; tools: Tool[]; think: string };
