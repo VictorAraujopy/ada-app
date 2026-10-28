@@ -1,6 +1,11 @@
 // O microfone da tela de voz: grava a fala, corta nas pausas e entrega cada pedaço em WAV (pro /ouvir da API).
 // Do celular só sai o pedaço de áudio, pro Mac; os arquivos dos pedaços (cache/AudioStream) são apagados.
-import { type AudioStreamBuffer, requestRecordingPermissionsAsync, useAudioStream } from 'expo-audio';
+import {
+  type AudioStreamBuffer,
+  getRecordingPermissionsAsync,
+  requestRecordingPermissionsAsync,
+  useAudioStream,
+} from 'expo-audio';
 import { Directory, File, Paths } from 'expo-file-system';
 import { useRef } from 'react';
 import { useSharedValue } from 'react-native-reanimated';
@@ -154,7 +159,10 @@ export function useMicrofone(aoPedaco: (wavEmBase64: string) => void) {
   async function abrirMicrofone() {
     await desligando.current;
     if (ligado.current) return;
-    const permissao = await requestRecordingPermissionsAsync();
+    // pedir a permissão passa o app pro fundo e de volta mesmo quando ela já foi dada, e a tela de voz desliga o
+    // microfone nesse vai e volta (o pedido recomeçava sem fim): só pede quando ainda não tem
+    const permissaoQueJaTinha = await getRecordingPermissionsAsync();
+    const permissao = permissaoQueJaTinha.granted ? permissaoQueJaTinha : await requestRecordingPermissionsAsync();
     if (!permissao.granted) {
       throw new SemPermissao('o app precisa da permissão do microfone');
     }
