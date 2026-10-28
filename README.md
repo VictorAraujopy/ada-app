@@ -11,14 +11,20 @@ Cada arquivo em `src/app/` é uma tela (Expo Router). A pasta `android/` é gera
 |---|---|
 | `src/app/_layout.tsx` | carrega as fontes e monta a pilha de telas; a splash fica na tela até as fontes carregarem |
 | `src/app/index.tsx` | a lista de conversas por dia, com a ficha da ADA e a prévia da última resposta (segurar uma conversa apaga; sem conexão, o motivo e o tentar de novo) |
-| `src/app/conversa/[id].tsx` | o chat: a resposta chega ao vivo, com o raciocínio e as tools; o botão de imagem no campo manda uma foto (câmera ou galeria), com a miniatura antes de enviar e a foto no balão; `nova` nasce na primeira mensagem; voltou com a ADA ainda respondendo (`gerando`), pergunta de 2 em 2s até a resposta entrar |
+| `src/app/conversa/[id].tsx` | o chat: a resposta chega ao vivo, com o raciocínio e as tools; o botão de imagem no campo manda uma foto (câmera ou galeria), com a miniatura antes de enviar e a foto no balão; o botão do eletro, entre o campo e o enviar, continua o chat por voz (num chat `nova`, ainda sem mensagem, a voz começa outra conversa); `nova` nasce na primeira mensagem; voltou com a ADA ainda respondendo (`gerando`), pergunta de 2 em 2s até a resposta entrar; voltar pra tela relê a conversa (a voz grava no mesmo histórico) |
+| `src/app/voz.tsx` | a tela de voz: o botão de assistente abre ela numa conversa nova (`ada://voz`), o botão do chat continua aquele chat (`?conversa=<id>`). Escuta sozinha, junta os pedaços transcritos, "enviar"/"apagar" (falados, ou a seta e a lixeira) mandam ou limpam; ela responde falando e o microfone reabre. A tela do celular não apaga com ela aberta (`expo-keep-awake`); o app indo pro fundo fecha o microfone, e voltando reabre do zero. Com a ADA carregando ou ocupada com outra conversa (o sinal âmbar), a onda fica âmbar e o microfone fechado (abre sozinho quando ela fica pronta). Sem texto de erro: a API fora do ar ou o microfone que não abre deixam a onda vermelha |
 | `src/app/terminal.tsx` | o terminal do Mac: digital (sem cair pro PIN) + senha, criada aqui na primeira vez; trava com 5 min parado ou com o app no fundo |
 | `src/ada.ts` | tudo que fala com a API (o endereço do `.env.local`, os pedidos, a leitura do stream, o endereço das fotos) |
 | `src/foto.ts` | pegar a foto (câmera ou galeria) e preparar: no máximo 1024 px de lado, em pé, JPEG em base64 |
+| `src/microfone.ts` | o microfone da voz (`AudioStream` do `expo-audio`, 16 kHz): corta a fala nas pausas de 0,8 s (fala = 6x o ruído de fundo) e entrega cada pedaço em WAV base64 pro `/ouvir`; o arquivo do pedaço é apagado logo depois, e o que sobrar (o app morto no meio de um pedaço) sai quando o microfone liga de novo |
+| `src/fala.ts` | a fala da ADA: a resposta dita frase por frase conforme chega, só em voz local do Android: a `en-gb-x-gbc-local`, ou outra local em inglês. O `-local` no nome é a convenção do motor de voz do Google: com outro motor como padrão (o da Samsung, por exemplo), a lista vem vazia e ela não fala |
+| `src/onda.tsx` | o monitor da tela de voz: a onda verde segue o microfone, âmbar enquanto ela pensa, verde mexendo sozinha enquanto ela fala, vermelha com a API fora |
+| `src/sinal.tsx` | o sinal do topo (o eletro do RE); a grade e as linhas de tubo dele também desenham o monitor da voz |
 | `src/componentes.tsx` | a marca (`MarcaDaAda`), o eletro, o estado da ADA e o botão de ícone |
 | `src/markdown.tsx` | o markdown das respostas (bloco de código com copiar, título, lista, negrito, itálico e `código`) |
 | `src/tema.ts` | as cores e as fontes |
-| `app.json` | nome, package (`dev.ada.app`), ícone, splash escura, o http liberado (`usesCleartextTraffic`, a API é http pela tailnet) e o seletor de foto sem permissão de microfone |
+| `app.json` | nome, package (`dev.ada.app`), ícone, splash escura, o http liberado (`usesCleartextTraffic`, a API é http pela tailnet), o microfone (`expo-audio`, sem serviço em segundo plano) e o plugin do assistente |
+| `plugin_assistente.js` | deixa a ADA ser o assistente do Android: o filtro `ACTION_ASSIST` no manifesto e, na `MainActivity`, a troca desse pedido pelo link `ada://voz` (blocos `@generated`, como os do expo-splash-screen) |
 | `assets/marca.svg` | a marca (o A com a borboleta): fonte do componente `MarcaDaAda` e dos ícones e da splash (`assets/*.png`) |
 
 Tem dois jeitos de rodar o app no celular:
@@ -98,7 +104,7 @@ npm run build
 
 Roda o `apk.sh`, que faz três coisas:
 1. `npx expo prebuild`: gera o projeto Android nativo (a pasta `android/`) a partir do `app.json`, com o nome,
-   o ícone, o package, o http liberado e as permissões (câmera pra foto; microfone bloqueado, o app não usa).
+   o ícone, o package, o http liberado e as permissões (câmera pra foto, microfone pra voz).
 2. `./gradlew assembleRelease`: o Gradle compila a parte nativa, empacota o código TypeScript (já convertido
    pra JS) dentro do app e gera o APK. Só pra arm64 (`-PreactNativeArchitectures=arm64-v8a`), o processador de
    todo celular Android atual: as 4 arquiteturas deixariam o build 3-4x mais lento.
@@ -164,3 +170,14 @@ cd ../ada-api && ADA_HOST=$(tailscale ip -4) caffeinate -i ../core/.venv/bin/pyt
 - `../core/.venv/bin/python main.py`: roda a API com o Python do core, que é onde estão as bibliotecas do modelo.
 
 O botão do terminal só aparece na lista com `ADA_TERMINAL=1` na API (ver o README do `ada-api`).
+
+### A ADA como assistente (uma vez só por celular)
+
+O APK deixa a ADA disponível como assistente, mas quem escolhe é o Android, nunca o app:
+
+- Configurações → Apps → Escolher apps padrão → **App de assistente digital** → ADA.
+- Configurações → Recursos avançados → Botão lateral → Pressionar e segurar → **Assistente digital**.
+
+Ou pelo cabo: `adb shell cmd role add-role-holder android.app.role.ASSISTANT dev.ada.app 0`.
+Segurar o botão lateral abre a tela de voz numa conversa nova. Na primeira vez o Android pede a permissão do
+microfone.

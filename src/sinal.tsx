@@ -67,18 +67,18 @@ function linhaDoSinal(largura: number, batidas: number) {
   return `M ${pontos.join(' L ')}`;
 }
 
-// o quadriculado do monitor: uma linha a cada 16 na vertical e a cada 12 na horizontal
-function gradeDoMonitor(largura: number) {
+// o quadriculado do monitor: uma linha a cada 16 na vertical e a cada 12 na horizontal (a onda da voz usa também)
+export function gradeDoMonitor(largura: number, altura: number) {
   const linhas: string[] = [];
-  for (let x = 16; x < largura; x += 16) linhas.push(`M ${x} 0 V ${ALTURA_DO_SINAL}`);
-  for (let y = 12; y < ALTURA_DO_SINAL; y += 12) linhas.push(`M 0 ${y} H ${largura}`);
+  for (let x = 16; x < largura; x += 16) linhas.push(`M ${x} 0 V ${altura}`);
+  for (let y = 12; y < altura; y += 12) linhas.push(`M 0 ${y} H ${largura}`);
   return linhas.join(' ');
 }
 
-// as linhas escuras a cada 3, por cima de tudo, como numa tela de tubo
-function linhasDeVarredura(largura: number) {
+// as linhas escuras a cada 3, por cima de tudo, como numa tela de tubo (a onda da voz usa também)
+export function linhasDeVarredura(largura: number, altura: number, margem: number) {
   const linhas: string[] = [];
-  for (let y = MARGEM; y <= ALTURA_DO_SINAL - MARGEM; y += 3) linhas.push(`M ${MARGEM} ${y} H ${largura - MARGEM}`);
+  for (let y = margem; y <= altura - margem; y += 3) linhas.push(`M ${margem} ${y} H ${largura - margem}`);
   return linhas.join(' ');
 }
 
@@ -100,8 +100,8 @@ export function SinalDaAda({ estado }: { estado: string }) {
   const comprimentoDoRastro = larguraDaLinha * RASTRO;
 
   const linha = useMemo(() => linhaDoSinal(largura, batidas), [largura, batidas]);
-  const grade = useMemo(() => gradeDoMonitor(largura), [largura]);
-  const varredura = useMemo(() => linhasDeVarredura(largura), [largura]);
+  const grade = useMemo(() => gradeDoMonitor(largura, ALTURA_DO_SINAL), [largura]);
+  const varredura = useMemo(() => linhasDeVarredura(largura, ALTURA_DO_SINAL, MARGEM), [largura]);
 
   // o relógio anda a cada quadro, fora do JavaScript, e só com a tela na frente
   const agora = useSharedValue(0);

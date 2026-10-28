@@ -1,8 +1,8 @@
 // Uma conversa: as mensagens do banco, a resposta da ADA chegando ao vivo e o campo de mandar (texto e foto).
 // "nova" é a conversa que ainda não existe: ela nasce na primeira mensagem (o título é a própria mensagem).
 import { Feather } from '@expo/vector-icons';
-import { router, useLocalSearchParams } from 'expo-router';
-import { type ComponentRef, useCallback, useEffect, useRef, useState } from 'react';
+import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
+import { type ComponentRef, useCallback, useEffect, useEffectEvent, useRef, useState } from 'react';
 import {
   Alert,
   Image,
@@ -27,14 +27,13 @@ import {
   type Mensagem,
   type Tool,
 } from '@/ada';
-import { BotaoIcone, MarcaDaAda, useInfo } from '@/componentes';
+import { BotaoIcone, LARGURA_DOS_BOTOES, MarcaDaAda, useInfo } from '@/componentes';
 import { type FotoPronta, pegarFoto } from '@/foto';
 import { Markdown } from '@/markdown';
 import { ALTURA_DO_SINAL, SinalDaAda } from '@/sinal';
 import { cor, fonte } from '@/tema';
 
 const MAX_TEXTO = 20_000; // o mesmo teto da API (api/limite.py)
-const LARGURA_DOS_BOTOES = 28; // a caixa estreita do terminal da tela inicial
 
 type AoVivo = { think: string; tools: Tool[]; resp: string };
 
@@ -63,9 +62,14 @@ export default function ConversaTela() {
     }
   }, []);
 
-  useEffect(() => {
-    recarregar(parametros.id);
-  }, [parametros.id, recarregar]);
+  // abrir a conversa e voltar pra ela relê o banco: a tela de voz grava no mesmo histórico.
+  // só no foco: a "nova" vira o id de verdade no meio do enviar, e isso não pode disparar uma releitura
+  const aoVoltarPraConversa = useEffectEvent(() => recarregar(id));
+  useFocusEffect(
+    useCallback(() => {
+      aoVoltarPraConversa();
+    }, []),
+  );
 
   // voltou com a ADA ainda respondendo: pergunta de 2 em 2s até a resposta entrar no banco
   useEffect(() => {
@@ -75,7 +79,8 @@ export default function ConversaTela() {
   }, [gerando, aoVivo, id, recarregar]);
 
   const ocupada = aoVivo !== null || gerando;
-  const adaAtende = estado === 'pronta' || estado.endsWith('na frente');
+  // ocupada respondendo outra conversa ainda deixa mandar (a API recusa com 409 e a mensagem volta pro campo)
+  const adaAtende = estado === 'pronta' || estado === 'ocupada' || estado.endsWith('na frente');
   const podeMandar = (texto.trim().length > 0 || foto !== null) && !ocupada && adaAtende;
 
   function escolherFoto() {
@@ -92,6 +97,16 @@ export default function ConversaTela() {
       if (pronta) setFoto(pronta);
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'não consegui pegar a foto');
+    }
+  }
+
+  // a voz continua esta conversa (o que for dito entra no histórico dela); a "nova" ainda não existe, então
+  // a voz começa outra
+  function abrirVoz() {
+    if (id === 'nova') {
+      router.push('/voz');
+    } else {
+      router.push({ pathname: '/voz', params: { conversa: id } });
     }
   }
 
@@ -244,7 +259,7 @@ export default function ConversaTela() {
             onPress={escolherFoto}
             disabled={ocupada}
             hitSlop={6}
-            style={({ pressed }) => [estilos.botaoFoto, ocupada && estilos.desligado, pressed && estilos.apertado]}
+            style={({ pressed }) => [estilos.botaoDoCampo, ocupada && estilos.desligado, pressed && estilos.apertado]}
           >
             <Feather name="image" size={20} color={cor.apagado} />
           </Pressable>
@@ -258,6 +273,16 @@ export default function ConversaTela() {
             maxLength={MAX_TEXTO}
             style={estilos.entrada}
           />
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Conversar por voz"
+            onPress={abrirVoz}
+            disabled={ocupada}
+            hitSlop={6}
+            style={({ pressed }) => [estilos.botaoDoCampo, ocupada && estilos.desligado, pressed && estilos.apertado]}
+          >
+            <Feather name="activity" size={20} color={cor.apagado} />
+          </Pressable>
           <Pressable
             accessibilityRole="button"
             accessibilityLabel="Enviar"
@@ -437,7 +462,8 @@ const estilos = StyleSheet.create({
     fontSize: 16,
     color: cor.texto,
   },
-  botaoFoto: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center' },
+  // a foto e a voz, os dois botões sem fundo do campo
+  botaoDoCampo: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center' },
   enviar: {
     width: 40,
     height: 40,

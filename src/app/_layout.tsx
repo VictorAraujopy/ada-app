@@ -14,6 +14,9 @@ import { useEffect } from 'react';
 
 import { cor } from '@/tema';
 
+// aberto a frio pelo botão de assistente (ada://voz), a pilha começa na lista: voltar da voz cai nela, não fora do app
+export const unstable_settings = { initialRouteName: 'index' };
+
 // a splash (o A sobre o preto) fica na tela até as fontes carregarem: do ícone pro app, sem tela vazia no meio
 SplashScreen.preventAutoHideAsync();
 SplashScreen.setOptions({ duration: 300, fade: true });

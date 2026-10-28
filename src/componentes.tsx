@@ -88,6 +88,9 @@ export function useInfo() {
   return { info: atual, estado: estadoDaAda(atual, foraDoAr) };
 }
 
+// a caixa estreita dos botões do topo da conversa e da voz (voltar, nova conversa): a do terminal da tela inicial
+export const LARGURA_DOS_BOTOES = 28;
+
 export function BotaoIcone({
   icone,
   rotulo,

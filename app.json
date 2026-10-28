@@ -27,12 +27,8 @@
         }
       ],
       "expo-font",
-      [
-        "expo-image-picker",
-        {
-          "microphonePermission": false
-        }
-      ],
+      "./plugin_assistente.js",
+      "expo-image-picker",
       [
         "expo-splash-screen",
         {
@@ -43,6 +39,12 @@
             "backgroundColor": "#0B0B0C",
             "image": "./assets/splash-icon.png"
           }
+        }
+      ],
+      [
+        "expo-audio",
+        {
+          "enableBackgroundPlayback": false
         }
       ]
     ],

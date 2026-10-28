@@ -5,7 +5,8 @@ import { fetch } from 'expo/fetch';
 // e a tela nunca mostra nem pede IP
 const ENDERECO = process.env.EXPO_PUBLIC_ADA_ENDERECO;
 
-export type Info = { pronta: boolean; fila: number; terminal: boolean; fake: boolean };
+// respondendo: ela está gerando uma resposta agora (esse pedido não conta na fila)
+export type Info = { pronta: boolean; respondendo: boolean; fila: number; terminal: boolean; fake: boolean };
 export type Conversa = { id: string; titulo: string; atualizada: number; n: number; previa: string | null };
 export type Tool = { nome: string; res: string };
 export type Meta = { pensou_s: number; respondeu_s: number; tools: Tool[]; think: string };
@@ -129,6 +130,11 @@ export async function conversar(
   await lerEventos(resposta, aoEvento);
 }
 
+// um pedaço da fala (WAV 16 kHz mono em base64) vira texto no ouvido da ADA (o Whisper no Mac);
+// o comando é o "enviar" ou o "apagar" do fim, que a API já tira do texto
+export type Ouvido = { texto: string; comando: 'enviar' | 'apagar' | null };
+export const ouvir = (audio: string) => pedirJson<Ouvido>('/ouvir', { metodo: 'POST', corpo: { audio } });
+
 // a foto de uma mensagem, servida pela API (a imagem do app busca direto deste endereço)
 export const enderecoDaFoto = (conversa: string, nome: string) => `${ENDERECO}/conversas/${conversa}/fotos/${nome}`;
 
@@ -138,7 +144,13 @@ export function estadoDaAda(atual: Info | null, foraDoAr: boolean) {
   if (!atual) return '…';
   if (!atual.pronta) return 'carregando';
   if (atual.fila > 0) return `${atual.fila} na frente`;
+  if (atual.respondendo) return 'ocupada';
   return 'pronta';
+}
+
+// carregando, ocupada ou com fila: o sinal fica âmbar, e a tela de voz não abre o microfone
+export function adaNaoAtendeAgora(estado: string) {
+  return estado === 'carregando' || estado === 'ocupada' || estado.endsWith('na frente');
 }
 
 // ---------- o terminal ----------
