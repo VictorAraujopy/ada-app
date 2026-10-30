@@ -10,7 +10,7 @@ import { Directory, File, Paths } from 'expo-file-system';
 import { useRef } from 'react';
 import { useSharedValue } from 'react-native-reanimated';
 
-// o ouvido da ADA (1_ada/voz/ouvido.py) só aceita WAV de 16 kHz, mono, 16 bits
+// o ouvido da ADA (1_ada/ouvido/ouvido.py) só aceita WAV de 16 kHz, mono, 16 bits
 const TAXA = 16000;
 const PASTA_DOS_PEDACOS = 'AudioStream'; // onde o expo-audio grava os arquivos, dentro do cache do app
 
